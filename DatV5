@@ -1,0 +1,599 @@
+--==================================================
+-- DAT CHUA V5 | ROBLOX STUDIO
+-- LocalScript: StarterPlayer > StarterPlayerScripts
+--==================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Config = {
+    ESP = false,
+    AimAssist = false,
+    Fly = false,
+    Speed = false,
+    FixLag = false,
+
+    SpeedValue = 50,
+    FlyValue = 50,
+    FOV = 120,
+    AimSmoothness = 0.15
+}
+
+--==================================================
+-- ÂM THANH
+--==================================================
+
+local scream = Instance.new("Sound")
+scream.Name = "DAT_CHUA_Scream"
+scream.SoundId = "rbxassetid://8983177095"
+scream.Volume = 1
+scream.Parent = SoundService
+
+local function playScream()
+    scream:Stop()
+    scream.TimePosition = 0
+    scream:Play()
+end
+
+--==================================================
+-- GIAO DIỆN
+--==================================================
+
+local oldGui = playerGui:FindFirstChild("DAT_CHUA_V4")
+if oldGui then
+    oldGui:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "DAT_CHUA_V4"
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 100
+gui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(280, 440)
+main.Position = UDim2.new(0, 15, 0.15, 0)
+main.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = gui
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 255, 255)
+stroke.Thickness = 1.5
+stroke.Parent = main
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -48, 0, 42)
+title.Position = UDim2.fromOffset(10, 0)
+title.BackgroundTransparency = 1
+title.Text = "DAT CHUA V5"
+title.TextColor3 = Color3.fromRGB(0, 255, 255)
+title.TextSize = 21
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(35, 32)
+close.Position = UDim2.new(1, -40, 0, 5)
+close.Text = "X"
+close.TextColor3 = Color3.new(1, 1, 1)
+close.BackgroundColor3 = Color3.fromRGB(180, 35, 45)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 18
+close.Parent = main
+
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 7)
+
+local reopen = Instance.new("TextButton")
+reopen.Size = UDim2.fromOffset(70, 42)
+reopen.Position = UDim2.new(0, 10, 0.45, 0)
+reopen.Text = "DAT"
+reopen.TextColor3 = Color3.fromRGB(0, 255, 255)
+reopen.TextSize = 17
+reopen.Font = Enum.Font.GothamBold
+reopen.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+reopen.Visible = false
+reopen.Parent = gui
+
+Instance.new("UICorner", reopen).CornerRadius = UDim.new(0, 8)
+
+close.Activated:Connect(function()
+    main.Visible = false
+    reopen.Visible = true
+end)
+
+reopen.Activated:Connect(function()
+    main.Visible = true
+    reopen.Visible = false
+    playScream()
+end)
+
+--==================================================
+-- DANH SÁCH CHỨC NĂNG
+--==================================================
+
+local content = Instance.new("ScrollingFrame")
+content.Name = "Content"
+content.Position = UDim2.fromOffset(10, 48)
+content.Size = UDim2.new(1, -20, 1, -58)
+content.BackgroundTransparency = 1
+content.BorderSizePixel = 0
+content.ScrollBarThickness = 4
+content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+content.CanvasSize = UDim2.new()
+content.Parent = main
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = content
+
+local function createToggle(label, key)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -5, 0, 38)
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.TextSize = 15
+    button.Font = Enum.Font.GothamMedium
+    button.Parent = content
+
+    Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
+
+    local function refresh()
+        button.Text = label .. " : "
+            .. (Config[key] and "ON" or "OFF")
+
+        button.BackgroundColor3 = Config[key]
+            and Color3.fromRGB(0, 120, 105)
+            or Color3.fromRGB(40, 40, 52)
+    end
+
+    button.Activated:Connect(function()
+        Config[key] = not Config[key]
+        refresh()
+    end)
+
+    refresh()
+    return button
+end
+
+createToggle("ESP VIỀN XANH", "ESP")
+createToggle("AIM ASSIST", "AimAssist")
+createToggle("FLY", "Fly")
+createToggle("TĂNG TỐC", "Speed")
+createToggle("FIX LAG", "FixLag")
+
+--==================================================
+-- THANH ĐIỀU CHỈNH
+--==================================================
+
+local function createSlider(label, key, minValue, maxValue)
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(1, -5, 0, 62)
+    holder.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+    holder.Parent = content
+
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(1, -12, 0, 25)
+    valueLabel.Position = UDim2.fromOffset(6, 2)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextColor3 = Color3.new(1, 1, 1)
+    valueLabel.TextSize = 14
+    valueLabel.Font = Enum.Font.GothamMedium
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.Parent = holder
+
+    local bar = Instance.new("TextButton")
+    bar.Size = UDim2.new(1, -16, 0, 16)
+    bar.Position = UDim2.fromOffset(8, 36)
+    bar.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
+    bar.Text = ""
+    bar.AutoButtonColor = false
+    bar.Parent = holder
+
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame")
+    fill.BackgroundColor3 = Color3.fromRGB(0, 255, 220)
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+
+    local function update(inputX)
+        local width = bar.AbsoluteSize.X
+        if width <= 0 then
+            return
+        end
+
+        local ratio = math.clamp(
+            (inputX - bar.AbsolutePosition.X) / width,
+            0,
+            1
+        )
+
+        Config[key] = math.floor(
+            minValue + ratio * (maxValue - minValue) + 0.5
+        )
+
+        fill.Size = UDim2.fromScale(ratio, 1)
+        valueLabel.Text = label .. ": " .. Config[key]
+    end
+
+    bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            update(input.Position.X)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging
+            and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input.Position.X)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    local ratio = (Config[key] - minValue) / (maxValue - minValue)
+    fill.Size = UDim2.fromScale(ratio, 1)
+    valueLabel.Text = label .. ": " .. Config[key]
+end
+
+createSlider("TỐC ĐỘ", "SpeedValue", 1, 1000)
+createSlider("TỐC ĐỘ BAY", "FlyValue", 1, 100)
+
+--==================================================
+-- FIX LAG ON/OFF
+--==================================================
+
+local fixLagApplied = nil
+local originalShadows = Lighting.GlobalShadows
+local originalEffects = {}
+local originalMaterials = {}
+
+local function setFixLag(enabled)
+    if fixLagApplied == enabled then
+        return
+    end
+
+    fixLagApplied = enabled
+
+    if enabled then
+        originalShadows = Lighting.GlobalShadows
+        Lighting.GlobalShadows = false
+
+        table.clear(originalEffects)
+
+        for _, effect in ipairs(Lighting:GetDescendants()) do
+            if effect:IsA("PostEffect") then
+                originalEffects[effect] = effect.Enabled
+                effect.Enabled = false
+            end
+        end
+
+        table.clear(originalMaterials)
+
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                originalMaterials[obj] = obj.Material
+                obj.Material = Enum.Material.SmoothPlastic
+            end
+        end
+
+        print("FIX LAG: ON")
+    else
+        Lighting.GlobalShadows = originalShadows
+
+        for effect, wasEnabled in pairs(originalEffects) do
+            if effect.Parent then
+                effect.Enabled = wasEnabled
+            end
+        end
+
+        for obj, material in pairs(originalMaterials) do
+            if obj.Parent then
+                obj.Material = material
+            end
+        end
+
+        table.clear(originalEffects)
+        table.clear(originalMaterials)
+
+        print("FIX LAG: OFF")
+    end
+end
+
+--==================================================
+-- ESP
+--==================================================
+
+local espObjects = {}
+
+local function removeESP(target)
+    local highlight = espObjects[target]
+
+    if highlight then
+        highlight:Destroy()
+        espObjects[target] = nil
+    end
+end
+
+local function addESP(target, character)
+    if target == player or not character then
+        return
+    end
+
+    removeESP(target)
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "DAT_CHUA_ESP"
+    highlight.Adornee = character
+    highlight.FillTransparency = 1
+    highlight.OutlineColor = Color3.fromRGB(0, 255, 255)
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Enabled = Config.ESP
+    highlight.Parent = gui
+
+    espObjects[target] = highlight
+end
+
+local function watchPlayer(target)
+    if target.Character then
+        addESP(target, target.Character)
+    end
+
+    target.CharacterAdded:Connect(function(character)
+        task.wait(0.5)
+
+        if target.Parent == Players then
+            addESP(target, character)
+        end
+    end)
+end
+
+for _, target in ipairs(Players:GetPlayers()) do
+    watchPlayer(target)
+end
+
+Players.PlayerAdded:Connect(watchPlayer)
+
+Players.PlayerRemoving:Connect(function(target)
+    removeESP(target)
+end)
+
+--==================================================
+-- NHÂN VẬT VÀ TỐC ĐỘ
+--==================================================
+
+local function getCharacter()
+    return player.Character
+end
+
+local function getHumanoid()
+    local character = getCharacter()
+    return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+--==================================================
+-- FLY
+--==================================================
+
+local flyAttachment
+local flyVelocity
+
+local function stopFly()
+    if flyVelocity then
+        flyVelocity:Destroy()
+        flyVelocity = nil
+    end
+
+    if flyAttachment then
+        flyAttachment:Destroy()
+        flyAttachment = nil
+    end
+end
+
+local function startFly(root)
+    stopFly()
+
+    flyAttachment = Instance.new("Attachment")
+    flyAttachment.Name = "DAT_CHUA_FlyAttachment"
+    flyAttachment.Parent = root
+
+    flyVelocity = Instance.new("LinearVelocity")
+    flyVelocity.Name = "DAT_CHUA_FlyVelocity"
+    flyVelocity.Attachment0 = flyAttachment
+    flyVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+    flyVelocity.VelocityConstraintMode =
+        Enum.VelocityConstraintMode.Vector
+    flyVelocity.MaxForce = 100000
+    flyVelocity.VectorVelocity = Vector3.zero
+    flyVelocity.Parent = root
+end
+
+--==================================================
+-- AIM ASSIST
+-- Dành cho game tự tạo trong Roblox Studio
+--==================================================
+
+local function getAimTarget()
+    local character = getCharacter()
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+
+    if not root then
+        return nil
+    end
+
+    local currentCamera = workspace.CurrentCamera
+    if not currentCamera then
+        return nil
+    end
+
+    local viewport = currentCamera.ViewportSize
+    local center = Vector2.new(viewport.X / 2, viewport.Y / 2)
+
+    local bestTarget
+    local bestDistance = Config.FOV
+
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= player then
+            local targetCharacter = targetPlayer.Character
+            local targetHumanoid = targetCharacter
+                and targetCharacter:FindFirstChildOfClass("Humanoid")
+            local targetRoot = targetCharacter
+                and targetCharacter:FindFirstChild("HumanoidRootPart")
+            local targetHead = targetCharacter
+                and targetCharacter:FindFirstChild("Head")
+
+            if targetHumanoid
+                and targetHumanoid.Health > 0
+                and targetRoot
+                and targetHead
+                and (targetRoot.Position - root.Position).Magnitude <= 300 then
+
+                local screenPoint, visible =
+                    currentCamera:WorldToViewportPoint(targetHead.Position)
+
+                if visible and screenPoint.Z > 0 then
+                    local point = Vector2.new(screenPoint.X, screenPoint.Y)
+                    local distance = (point - center).Magnitude
+
+                    if distance < bestDistance then
+                        local params = RaycastParams.new()
+                        params.FilterType = Enum.RaycastFilterType.Exclude
+                        params.FilterDescendantsInstances = {character}
+
+                        local origin = currentCamera.CFrame.Position
+                        local direction = targetHead.Position - origin
+                        local result = workspace:Raycast(
+                            origin,
+                            direction,
+                            params
+                        )
+
+                        if result
+                            and result.Instance:IsDescendantOf(targetCharacter) then
+                            bestDistance = distance
+                            bestTarget = targetHead
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return bestTarget
+end
+
+local AIM_BIND_NAME = "DAT_CHUA_AimAssist"
+
+RunService:BindToRenderStep(
+    AIM_BIND_NAME,
+    Enum.RenderPriority.Camera.Value + 1,
+    function()
+        if not Config.AimAssist then
+            return
+        end
+
+        local currentCamera = workspace.CurrentCamera
+        local target = getAimTarget()
+
+        if not currentCamera or not target then
+            return
+        end
+
+        local desired = CFrame.lookAt(
+            currentCamera.CFrame.Position,
+            target.Position
+        )
+
+        currentCamera.CFrame = currentCamera.CFrame:Lerp(
+            desired,
+            math.clamp(Config.AimSmoothness, 0.01, 1)
+        )
+    end
+)
+
+--==================================================
+-- VÒNG LẶP CHÍNH
+--==================================================
+
+RunService.Heartbeat:Connect(function()
+    setFixLag(Config.FixLag)
+
+    local character = getCharacter()
+    local humanoid = getHumanoid()
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+
+    for _, highlight in pairs(espObjects) do
+        if highlight and highlight.Parent then
+            highlight.Enabled = Config.ESP
+        end
+    end
+
+    if humanoid then
+        humanoid.WalkSpeed = Config.Speed and Config.SpeedValue or 16
+    end
+
+    if Config.Fly and root and humanoid then
+        if not flyVelocity or not flyVelocity.Parent then
+            startFly(root)
+        end
+
+        local direction = humanoid.MoveDirection
+        local vertical = 0
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            vertical = 1
+        elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            vertical = -1
+        end
+
+        if flyVelocity then
+            flyVelocity.VectorVelocity =
+                direction * Config.FlyValue
+                + Vector3.new(0, vertical * Config.FlyValue, 0)
+        end
+    else
+        stopFly()
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    stopFly()
+end)
+
+--==================================================
+-- KHỞI ĐỘNG
+--==================================================
+
+playScream()
+
+print("DAT CHUA V5 loaded successfully")
