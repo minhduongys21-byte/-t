@@ -1,0 +1,152 @@
+--==================================================
+-- DAT CHUA V5 | FIX LAG ON/OFF
+--==================================================
+
+local fixLagApplied = false
+local savedProperties = {}
+local originalShadows
+local originalQuality
+
+local function saveAndSet(obj, property, value)
+    local ok, oldValue = pcall(function()
+        return obj[property]
+    end)
+
+    if not ok then return end
+
+    if not savedProperties[obj] then
+        savedProperties[obj] = {}
+    end
+
+    if savedProperties[obj][property] == nil then
+        savedProperties[obj][property] = oldValue
+    end
+
+    pcall(function()
+        obj[property] = value
+    end)
+end
+
+local function optimizeObject(obj)
+    if not Config.FixLag then return end
+
+    if obj:IsA("PostEffect") then
+        saveAndSet(obj, "Enabled", false)
+
+    elseif obj:IsA("Atmosphere") then
+        saveAndSet(obj, "Density", 0)
+        saveAndSet(obj, "Haze", 0)
+        saveAndSet(obj, "Glare", 0)
+
+    elseif obj:IsA("Clouds") then
+        saveAndSet(obj, "Enabled", false)
+
+    elseif obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam")
+        or obj:IsA("Smoke")
+        or obj:IsA("Fire")
+        or obj:IsA("Sparkles")
+        or obj:IsA("Light") then
+
+        saveAndSet(obj, "Enabled", false)
+
+    elseif obj:IsA("BasePart") then
+        saveAndSet(obj, "Material", Enum.Material.SmoothPlastic)
+        saveAndSet(obj, "Reflectance", 0)
+        saveAndSet(obj, "CastShadow", false)
+    end
+end
+
+local function enableFixLag()
+    originalShadows = Lighting.GlobalShadows
+
+    pcall(function()
+        originalQuality = settings().Rendering.QualityLevel
+        settings().Rendering.QualityLevel =
+            Enum.QualityLevel.Level01
+    end)
+
+    Lighting.GlobalShadows = false
+
+    for _, obj in ipairs(Lighting:GetDescendants()) do
+        optimizeObject(obj)
+    end
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        optimizeObject(obj)
+    end
+
+    print("DAT CHUA FIX LAG: ON")
+end
+
+local function disableFixLag()
+    for obj, properties in pairs(savedProperties) do
+        if obj and obj.Parent then
+            for property, oldValue in pairs(properties) do
+                pcall(function()
+                    obj[property] = oldValue
+                end)
+            end
+        end
+    end
+
+    table.clear(savedProperties)
+
+    if originalShadows ~= nil then
+        Lighting.GlobalShadows = originalShadows
+    end
+
+    if originalQuality ~= nil then
+        pcall(function()
+            settings().Rendering.QualityLevel = originalQuality
+        end)
+    end
+
+    originalShadows = nil
+    originalQuality = nil
+
+    print("DAT CHUA FIX LAG: OFF")
+end
+
+local function setFixLag(state)
+    if fixLagApplied == state then return end
+
+    fixLagApplied = state
+    Config.FixLag = state
+
+    if state then
+        enableFixLag()
+    else
+        disableFixLag()
+    end
+end
+
+-- NÚT ON/OFF TRONG MENU
+createToggle("FIX LAG", "FixLag")
+
+-- Theo dõi hiệu ứng mới xuất hiện
+Workspace.DescendantAdded:Connect(function(obj)
+    if Config.FixLag then
+        task.defer(function()
+            if Config.FixLag and obj.Parent then
+                optimizeObject(obj)
+            end
+        end)
+    end
+end)
+
+Lighting.DescendantAdded:Connect(function(obj)
+    if Config.FixLag then
+        task.defer(function()
+            if Config.FixLag and obj.Parent then
+                optimizeObject(obj)
+            end
+        end)
+    end
+end)
+
+-- ĐỒNG BỘ NÚT VỚI CHỨC NĂNG
+RunService.Heartbeat:Connect(function()
+    setFixLag(Config.FixLag)
+end)
