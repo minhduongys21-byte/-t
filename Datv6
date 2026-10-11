@@ -1,0 +1,144 @@
+--========================================
+-- DAT CHUA FIX LAG | BLACK RED
+-- ONE BUTTON - ROBLOX STUDIO
+--========================================
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "DAT_CHUA_FIXLAG"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.fromOffset(180, 55)
+button.Position = UDim2.new(0.5, -90, 0.75, 0)
+button.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+button.Text = "⚡ FIX LAG"
+button.TextColor3 = Color3.fromRGB(255, 35, 55)
+button.TextSize = 19
+button.Font = Enum.Font.GothamBold
+button.Parent = gui
+
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 10)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 25, 45)
+stroke.Thickness = 2
+stroke.Parent = button
+
+local busy = false
+local processed = {}
+
+-- TẮT HIỆU ỨNG
+local function removeEffect(obj)
+    if processed[obj] then return end
+
+    local success = pcall(function()
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam")
+        or obj:IsA("Fire")
+        or obj:IsA("Smoke")
+        or obj:IsA("Sparkles")
+        or obj:IsA("PostEffect")
+        or obj:IsA("Light") then
+
+            obj.Enabled = false
+            processed[obj] = true
+
+        elseif obj:IsA("Explosion") then
+
+            obj.Visible = false
+            processed[obj] = true
+
+        elseif obj:IsA("BasePart") then
+
+            if obj.Material == Enum.Material.Neon then
+                obj.Material = Enum.Material.SmoothPlastic
+            end
+
+            if obj.CastShadow then
+                obj.CastShadow = false
+            end
+        end
+    end)
+end
+
+local function fixLag()
+    -- Tắt hiệu ứng hậu kỳ
+    for _, obj in ipairs(Lighting:GetDescendants()) do
+        removeEffect(obj)
+    end
+
+    -- Tắt hiệu ứng trong bản đồ
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        removeEffect(obj)
+    end
+
+    -- Giảm hiệu ứng ánh sáng
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+    end)
+
+    -- Tắt trang trí Terrain
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        pcall(function()
+            terrain.Decoration = false
+        end)
+    end
+end
+
+-- BẤM NÚT ĐỂ FIX LAG
+button.Activated:Connect(function()
+    if busy then return end
+    busy = true
+
+    button.Text = "ĐANG FIX LAG..."
+    button.TextColor3 = Color3.fromRGB(255, 220, 50)
+
+    task.spawn(function()
+        local success, err = pcall(fixLag)
+
+        if success then
+            button.Text = "✓ ĐÃ FIX LAG"
+            button.TextColor3 = Color3.fromRGB(50, 255, 100)
+            stroke.Color = Color3.fromRGB(50, 255, 100)
+        else
+            button.Text = "LỖI FIX LAG"
+            warn(err)
+        end
+
+        task.wait(2)
+        button.Text = "⚡ FIX LAG"
+        button.TextColor3 = Color3.fromRGB(255, 35, 55)
+        stroke.Color = Color3.fromRGB(255, 25, 45)
+
+        busy = false
+    end)
+end)
+
+-- TỰ TẮT HIỆU ỨNG MỚI XUẤT HIỆN SAU KHI FIX
+Workspace.DescendantAdded:Connect(function(obj)
+    if next(processed) ~= nil then
+        task.defer(function()
+            removeEffect(obj)
+        end)
+    end
+end)
+
+Lighting.DescendantAdded:Connect(function(obj)
+    if next(processed) ~= nil then
+        task.defer(function()
+            removeEffect(obj)
+        end)
+    end
+end)
+
+print("DAT CHUA FIX LAG loaded!")
